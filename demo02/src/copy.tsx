@@ -1,5 +1,5 @@
 
-import { useRef, useState } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import './App.css';
 
 interface Tehtava {
@@ -9,7 +9,7 @@ interface Tehtava {
 
 function App() {
 
-  let uusiTehtava : any = useRef(null);
+  const uusiTehtava : RefObject<any> = useRef<HTMLInputElement>(null);
 
   const [tehtavat, setTehtavat] = useState<Tehtava[]>([
     {
@@ -26,15 +26,10 @@ function App() {
     }
   ]);
 
-
   const lisaaTehtava = (nimi : string) : void => {
 
-    if (!nimi) {
-      return;
-    }
-
     let uusiTehtava : Tehtava = {
-      nimi : nimi,
+      nimi,
       tehty : false
     }
 
@@ -71,7 +66,7 @@ function App() {
       <button
         onClick={ () => {
           lisaaTehtava(uusiTehtava.current.value);
-          uusiTehtava.current.value = "";
+          uusiTehtava
         }}
       >Lisää tehtävä</button>
 

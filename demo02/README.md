@@ -65,6 +65,65 @@ return (
 );
 ```
 
-### 3. Toiseen elementtiin viittaaminen
+### 3. Toisen elementin arvoon viittaaminen
 
-React-sovelluksia ohjelmoidessa tulee monesti tarve viitata johonkin toiseen elementtiin. 
+React-sovelluksia ohjelmoidessa tulee monesti tarve viitata johonkin toiseen elementtiin. Tähän on eri tapoja riippuen käyttötarpeesta. Jos esimerkiksi halutaan tallentaa käyttäjän kirjoittamaa syötettä tilaan, kuten demossa 1, se voidaan tehdä seuraavasti:
+
+```tsx
+const [nimi, setNimi] = useState<string>("");
+const [viesti, setViesti] = useState<string>("")
+
+return (
+  <>
+    <input
+      type="text"
+      onChange={(e) => {
+        setNimi(e.target.value);
+        console.log(e.target.value);
+      }}
+    />
+
+    <button
+      onClick={ () => { setViesti(`Heippa, ${nimi}!`) } }
+    >Sano hei</button>
+
+    <p>Kirjoitat: {nimi}</p>
+
+    {Boolean(viesti) && <p>{viesti}</p>}
+  </>
+);
+```
+
+Yllä oleva tapa renderöi komponentin uudelleen jokaisella syötteen päivittymisellä, koska tilaa muutetaan. Tämä on muun muassa suorituksellisesti raskaampaa, mutta voi olla tarpeen tilanteissa, joissa käyttöliittymän näkymää halutaan päivitettävän jokaisella elementin muutoksella.
+
+Toisinaan taas halutaan vain seurata jonkin elementin arvon muutosta ilman, että tarvitaan uudelleenrenderöintiä käyttöliittymässä. Näin on demon 2 esimerkissä, jossa halutaan lisätä käyttäjän kirjoittama tehtävä listaan vasta napin painamisen yhteydessä. Tällöin ei ole tarvetta päivittää tilaa `input`-kentän arvon muuttuessa.
+
+Voidaan siis käyttää Reactin `ref`-ominaisuutta viittaamaan suoraan toisen elementin tietoon.Nyt elementin arvon muuttuminen ei aiheuta komponentin päivittymistä, toisin kuin tilamuuttujaan tietoa päivittäessä.
+
+```tsx
+import { useRef, useState } from 'react';
+
+function App() {
+
+  const nimi : RefObject<any> = useRef<HTMLInputElement>(null);
+
+  const [viesti, setViesti] = useState<string>();
+
+  return (
+    <>
+      <input
+      ref={nimi}
+      type="text"
+      />
+
+      <button
+        onClick={ () => {
+          setViesti(`Heippa, ${nimi.current.value}!`);
+        }}
+      >Sano hei</button>
+
+      {Boolean(viesti) && <p>{viesti}</p>}
+    </>
+  );
+}
+```
