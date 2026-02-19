@@ -13,7 +13,7 @@ const kulkuneuvot : string[] = [
   "Moottoripyörä",
   "Sähköpotkulauta",
   "Muu kulkuneuvo"
-]
+];
 
 export default function App() {
 

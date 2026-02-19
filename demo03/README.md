@@ -64,6 +64,27 @@ interface Props {
   valitettyFunktio: () => void;
 }
 
+export default function Nappi(props: Props) {
+  return (
+    <button
+      onClick={() => {
+        console.log("Nappia painettu!");
+        props.valitettyFunktio();
+      }}
+    >{props.children}</button>
+  );
+}
+```
+
+**Nappi.tsx (propsit purettu)**
+```tsx
+// Tässä määritetään, minkä muotoinen ominaisuus komponentilla on
+// Tämä ominaisuus on nimeltään 'Props', se on objekti ja sisältää tiedot 'children' (joku merkkijono) ja valitettyFunktio (ottaa vastaan jonkin funktion emokomponentilta)
+interface Props {
+  children: string;
+  valitettyFunktio: () => void;
+}
+
 export default function Nappi({ children, valitettyFunktio }: Props) {
   return (
     <button
