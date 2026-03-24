@@ -2,12 +2,12 @@
 
 ## Oppimistavoitteet
 
-Tämän demon jälkeen opiskelija osaa:
-- selittää, mitä SPA-reititys tarkoittaa ja miten se eroaa perinteisestä sivunlatauksesta
-- asentaa React Router -kirjaston Vite-projektiin ja ottaa `BrowserRouter`-komponentin käyttöön
-- määritellä reitit `Routes`- ja `Route`-komponenteilla
-- navigoida näkymien välillä `Link`-komponentilla ja `useNavigate`-hookilla
-- rakentaa navigaatiovalikon MUI:n `AppBar`- ja `Drawer`-komponenteilla
+Tämän demon jälkeen opiskelija:
+- ymmärtää eron React-sovelluksen näkymien reitityksen ja perinteisten HTML-sivujen lataamisen välillä,
+- asentaa React Router -kirjaston Vite-projektiin ja ottaa `BrowserRouter`-komponentin käyttöön,
+- määritellä reitit `Routes`- ja `Route`-komponenteilla,
+- navigoida näkymien välillä `Link`-komponentilla ja `useNavigate`-hookilla, ja
+- rakentaa navigaatiovalikon MUI:n `AppBar`- ja `Drawer`-komponenteilla.
 
 ---
 
