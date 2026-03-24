@@ -15,18 +15,17 @@ Tämän demon jälkeen opiskelija:
 
 ### Mitä reititys on?
 
-Perinteisissä verkkosivustoissa jokainen sivu on erillinen HTML-tiedosto palvelimella. Kun käyttäjä klikkaa linkkiä, selain lataa kokonaan uuden sivun palvelimelta. Tämä aiheuttaa koko sivun uudelleenlatauksen.
+Perinteisissä verkkosivustoissa jokainen sivu on erillinen HTML-tiedosto palvelimella. Kun käyttäjä klikkaa linkkiä, selain lataa kokonaan uuden sivun palvelimelta.
 
-React-sovellukset ovat **yksisivuisia sovelluksia** (Single Page Application, SPA). Selain lataa sovelluksen kerran, ja sen jälkeen kaikki näkymien vaihdot tapahtuvat pelkästään vaihtamalla näkyvää React-komponenttia. Sivua ei ladata uudelleen, vaan vain sisältö vaihtuu. URL-osoite kuitenkin muuttuu selaimen osoiterivillä, jotta käyttäjä näkee aina missä näkymässä ollaan ja voi jakaa linkin tiettyyn näkymään.
+Tähän asti rakennetut React-sovellukset ovat olleet  **yksisivuisia sovelluksia** (Single Page Application, SPA). Selain lataa sovelluksen kerran, ja sen jälkeen kaikki näkymien vaihdot tapahtuvat pelkästään vaihtamalla näkyvää React-komponenttia selaimeen ladatussa HTML-kehyksessä (`index.html`). Sivua ei ladata uudelleen, vaan vain sisältö vaihtuu. URL-osoite kuitenkin muuttuu selaimen osoiterivillä, jotta käyttäjä näkee aina missä näkymässä ollaan ja voi jakaa linkin tiettyyn näkymään.
 
-Tätä URL-osoitteiden ja näkymäkomponenttien välistä yhdistämistä kutsutaan **reititykseksi**.
+Tätä URL-osoitteiden ja näkymäkomponenttien välistä yhdistämistä kutsutaan Reactissa **reititykseksi** ja sitä toteutetaan React Router -komponenttikirjastolla.
 
 | Ominaisuus | Perinteinen sivusto | SPA-reititys (React) |
 |------------|--------------------|-----------------------|
 | Sivun lataus | Koko sivu latautuu uudelleen | Vain sisältö vaihtuu |
-| URL-osoite | Jokainen sivu on oma HTML-tiedostonsa | URL muuttuu, mutta sivu ei lataudu uudelleen |
-| Nopeus | Hitaampi (palvelinpyyntö joka kerta) | Nopeampi (komponentti vaihtuu välittömästi) |
-| Tila (state) | Häviää sivunlatauksen yhteydessä | Säilyy näkymien välillä |
+| URL-osoite | Jokainen sivu on oma HTML-tiedostonsa, jolla on oma resurssin URL-osoite | URL muuttuu, mutta sivu ei lataudu uudelleen |
+| Tila (state) | Häviää sivunlatauksen yhteydessä. Perinteiset latauspyynnöt ovat tilattomia. | Voi säilyä näkymien välillä |
 
 ### React Router
 
