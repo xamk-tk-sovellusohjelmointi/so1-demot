@@ -1,27 +1,207 @@
 # Demo 6: Reititysparametrit
 
-Demossa 6 jatketaan React Routerin käyttöä ja opitaan uusi tärkeä konsepti: **reititysparametrit** (engl. route parameters). Reititysparametrien avulla samaa komponenttia voidaan käyttää erilaisen datan näyttämiseen reitin osana välitettävän arvon perusteella — ilman, että jokaiselle yksittäiselle näkymälle tarvitsee luoda oma komponenttinsa.
+## Oppimistavoitteet
 
-Demosovelluksena on tehtävälista, jossa tehtäviä voidaan lisätä, merkitä tehdyiksi ja poistaa. Poistaminen toteutetaan omassa näkymässään, jonne navigoidaan reitillä `/poista/:indeksi`. Kaksoispisteellä alkava `:indeksi` on reititysparametri — se vaihtelee sen mukaan, mitä tehtävää ollaan poistamassa.
+Tämän demon jälkeen opiskelija osaa:
+- selittää, mitä reititysparametrit ovat ja miksi niitä käytetään
+- määritellä dynaamisen reitin `Route`-komponentissa (`:parametri`-syntaksi)
+- lukea reititysparametrin arvon `useParams`-hookilla komponentissa
+- muuntaa merkkijonomuotoisen parametrin numeroksi ja käyttää sitä taulukko-operaatioissa
+- päivittää React-tilamuuttujan taulukkoa immutable-periaatteella `map`- ja `filter`-metodeilla
+- rakentaa uudelleenkäytettävän apukomponentin (`Otsikko`) propsien ja `children`-ominaisuuden avulla
 
-Tärkeimmät linkit opiskeluun:
+---
 
-- [React Router — useParams](https://reactrouter.com/api/hooks/useParams)
-- [React Router — dynaamiset segmentit](https://reactrouter.com/start/library/routing#dynamic-segments)
+## 1. Reititysparametrit
 
-## 1. Asennukset
+### Mitä reititysparametrit ovat?
 
-### 1.1 Asennetaan tarvittavat paketit
+Demo 5:ssä opittiin reitityksen perusteet: jokainen näkymä sai oman kiinteän polkunsa (`/`, `/info`). Joskus tarvitaan kuitenkin **dynaamisia reittejä**, joissa polun osa vaihtelee. Esimerkiksi verkkokaupassa jokainen tuote ei tarvitse omaa reittiään (`/tuote/kengat`, `/tuote/paita`, `/tuote/laukku`), vaan yksi reitti riittää: `/tuote/:id`. Kaksoispisteellä alkava `:id` on **reititysparametri**, jonka arvo vaihtelee sen mukaan, mitä tuotetta katsotaan.
 
-Tämä demo tarvitsee samat paketit kuin Demo 5: React Router, MUI, MUI:n ikonit ja Roboto-fontti. Jos asensit ne edellisessä demossa, asennat nyt ne uudelleen tähän projektiin.
+React Routerissa reititysparametri määritellään `Route`-komponentissa kaksoispisteellä:
 
-```bash
-npm install react-router @mui/material @emotion/react @emotion/styled @mui/icons-material @fontsource/roboto
+```tsx
+<Route path="/tuote/:id" element={<Tuote />} />
 ```
 
-### 1.2 Otetaan BrowserRouter ja fontit käyttöön main.tsx-tiedostossa
+Tämä reitti vastaa kaikkia polkuja, joissa `/tuote/`-osan jälkeen on jokin arvo: `/tuote/1`, `/tuote/42`, `/tuote/abc`. Arvo luetaan komponentissa `useParams`-hookilla.
 
-Aivan kuten Demo 5:ssä, koko sovellus kääritään `BrowserRouter`-komponentin sisään ja Roboto-fontit lisätään tuonteina:
+### useParams
+
+`useParams` on React Routerin hook, joka palauttaa objektin sisältäen aktiivisen reitin parametrit avain-arvo-pareina:
+
+```tsx
+import { useParams } from 'react-router';
+
+const { id } = useParams();
+```
+
+Parametrin nimi (`id`) vastaa reitissä määriteltyä nimeä (`:id`). Destructuring-syntaksilla `{ id }` poimitaan parametri suoraan objektista.
+
+`useParams` palauttaa kaikki parametriarvot aina **merkkijonoina** (`string`), vaikka niiden sisältö olisi numero. Jos parametria käytetään numeerisena, tyyppimuunnos täytyy tehdä itse:
+
+```tsx
+const idNumero = Number(id);
+```
+
+Dokumentaatio: [React Router — useParams](https://reactrouter.com/api/hooks/useParams), [React Router — dynaamiset segmentit](https://reactrouter.com/start/library/routing#dynamic-segments)
+
+### Immutable-päivitys: map ja filter
+
+Reactissa tilamuuttujan taulukkoa ei koskaan muuteta suoraan. Sen sijaan luodaan **uusi taulukko**, joka asetetaan uudeksi tilaksi. Tähän käytetään JavaScriptin `map`- ja `filter`-metodeja.
+
+**`map`** käy läpi taulukon ja palauttaa uuden taulukon, jossa jokainen alkio on mahdollisesti muokattu. Alkuperäinen taulukko ei muutu:
+
+```tsx
+// Vaihdetaan indeksin 2 kohdalla olevan tehtävän tehty-tila
+setTehtavat(
+  tehtavat.map((tehtava, i) =>
+    i === 2 ? { ...tehtava, tehty: !tehtava.tehty } : tehtava
+  )
+);
+```
+
+`{ ...tehtava, tehty: !tehtava.tehty }` luo uuden objektin spread-operaattorilla: kaikki alkuperäisen objektin kentät kopioidaan ja `tehty`-kenttä korvataan käänteisellä arvolla.
+
+**`filter`** käy läpi taulukon ja palauttaa uuden taulukon, joka sisältää vain ne alkiot, joille ehto on tosi:
+
+```tsx
+// Poistetaan indeksin 2 kohdalla oleva tehtävä
+setTehtavat(tehtavat.filter((_, idx) => idx !== 2));
+```
+
+Alleviivattu `_` tarkoittaa, että funktion ensimmäistä parametria (itse alkiota) ei käytetä. Tämä on JavaScript/TypeScript-käytäntö merkitä käyttämätön parametri.
+
+### Demosovellus
+
+Tässä demossa rakennetaan tehtävälistasovellus, jossa tehtäviä voidaan lisätä, merkitä tehdyiksi ja poistaa. Sovelluksessa on kolme näkymää:
+
+| Reitti | Näkymä | Kuvaus |
+|--------|--------|--------|
+| `/` | Tehtävälista | Listaa tehtävät, merkintä tehdyksi, poistopainike |
+| `/uusi` | Uusi tehtävä | Tekstikenttä ja tallennuspainike |
+| `/poista/:indeksi` | Poista tehtävä | Vahvistus poistettavan tehtävän nimellä |
+
+Demo 5:stä poiketen tässä demossa opitaan reititysparametrit: poistoreitti `/poista/:indeksi` käyttää dynaamista parametria, jolla tunnistetaan poistettava tehtävä. Navigaatiovalikkoa ei käytetä tässä demossa.
+
+---
+
+## 2. Demosovelluksen rakentuminen vaihe vaiheelta
+
+### Vaihe 1: Projektin luominen
+
+Luodaan uusi Vite + React + TypeScript -projekti:
+
+```bash
+npm create vite@latest demo06 -- --template react-ts
+```
+
+Siirrytään projektikansioon:
+
+```bash
+cd demo06
+```
+
+Asennetaan projektin perusriippuvuudet:
+
+```bash
+npm install
+```
+
+Siistitään Viten luoma oletussisältö. Poistetaan tarpeettomat tiedostot:
+
+```bash
+rm src/App.css src/index.css src/assets/react.svg
+```
+
+Korvataan `src/App.tsx` tyhjällä pohjalla:
+
+```tsx
+function App() {
+  return (
+    <>
+      <h1>Demo 6</h1>
+    </>
+  );
+}
+
+export default App;
+```
+
+Korvataan `src/main.tsx` siistillä versiolla ilman `index.css`-tuontia:
+
+```tsx
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App.tsx';
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
+```
+
+Asetetaan kehityspalvelimen portti muokkaamalla `vite.config.ts`-tiedostoa:
+
+```typescript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 3006
+  }
+})
+```
+
+Käynnistetään kehityspalvelin ja tarkistetaan, että oletussivu avautuu selaimessa:
+
+```bash
+npm run dev
+```
+
+Sovellus avautuu osoitteessa `http://localhost:3006`.
+
+### Vaihe 2: Riippuvuuksien asentaminen
+
+Sammutetaan kehityspalvelin `Ctrl + C`:llä ja asennetaan kaikki demon tarvitsemat paketit.
+
+**React Router:**
+
+```bash
+npm install react-router
+```
+
+**MUI ja sen tarvitsemat kirjastot:**
+
+```bash
+npm install @mui/material @emotion/react @emotion/styled
+```
+
+**MUI:n ikonit:**
+
+```bash
+npm install @mui/icons-material
+```
+
+**Roboto-fontti:**
+
+```bash
+npm install @fontsource/roboto
+```
+
+Käynnistetään kehityspalvelin asennusten jälkeen uudelleen:
+
+```bash
+npm run dev
+```
+
+### Vaihe 3: BrowserRouter ja Roboto-fontit (main.tsx)
+
+Otetaan käyttöön `BrowserRouter` ja Roboto-fontit `main.tsx`-tiedostossa, kuten demo 5:ssä:
 
 ```tsx
 import { StrictMode } from 'react';
@@ -42,26 +222,17 @@ createRoot(document.getElementById('root')!).render(
 );
 ```
 
-## 2. Sovelluksen tietorakenne — Tehtava-interface
+`BrowserRouter` kääritään `App`-komponentin ympärille `StrictMode`-komponentin sisään, jotta kaikki sovelluksen komponentit voivat käyttää React Routerin reititysominaisuuksia.
 
-Tässä demossa useat komponentit käyttävät samaa `Tehtava`-tietotyyppiä. Tyyppi määritellään `interface`-rakenteena jokaisessa tiedostossa, jossa sitä tarvitaan:
+### Vaihe 4: Otsikko-apukomponentti
 
-```tsx
-interface Tehtava {
-  nimi: string;
-  tehty: boolean;
-}
+Rakennetaan sovellukselle apukomponentti otsikoiden tulostamiseen. Tämä ei liity suoraan reititysparametreihin, mutta selkeyttää sovelluksen koodia: sen sijaan, että joka komponentissa kirjoitetaan sama `Typography`-rakenne, käytetään omaa `Otsikko`-komponenttia.
+
+Luodaan `src/components/`-kansio:
+
+```bash
+mkdir src/components
 ```
-
-`Tehtava`-tyyppi on objekti, jolla on kaksi kenttää:
-- `nimi`: tehtävän nimi tekstinä
-- `tehty`: onko tehtävä merkitty tehdyksi (totuusarvo)
-
-Sama `interface` kirjoitetaan `App.tsx`-tiedostoon sekä kaikkiin komponentteihin, jotka käyttävät tehtävätietoja (`Tehtavalista`, `UusiTehtava`, `PoistaTehtava`).
-
-## 3. Otsikko-apukomponentti
-
-Rakennetaan sovellukselle pieni apukomponentti otsikoiden tulostamiseen. Se ei liity suoraan reititysparametreihin, mutta selkeyttää sovelluksen koodia: sen sijaan, että kirjoitetaan joka paikassa sama `Typography`-rakenne, käytetään omaa `Otsikko`-komponenttia.
 
 Luodaan tiedosto `src/components/Otsikko.tsx`:
 
@@ -92,66 +263,21 @@ export default Otsikko;
 
 Komponentissa on kaksi ominaisuutta:
 
-- `children`: Otsikon teksti. Tyyppi on `React.ReactNode`, joka kattaa kaiken mahdollisen React-sisällön — tekstiä, elementtejä tai molempia. Tämä on oikea tyyppi, kun komponentti saa sisältönsä lapsielementteinä.
+- `children`: Otsikon sisältö. Tyyppi on `React.ReactNode`, joka kattaa kaiken mahdollisen React-sisällön (tekstiä, elementtejä tai molempia). Tämä on oikea tyyppi, kun komponentti saa sisältönsä lapsielementteinä.
 - `tyyli?: 'pieni'`: Valinnainen ominaisuus, jolla voidaan pyytää pienempää otsikkoa. Tyypiksi on asetettu merkkijonoliteraali `'pieni'` (eikä pelkkä `string`), jolloin TypeScript antaa virheen, jos ominaisuuteen yritetään antaa jokin muu arvo. Kysymysmerkki tekee ominaisuudesta valinnaisen.
 
 Komponenttia voidaan käyttää kahdella tavalla:
+
 ```tsx
 <Otsikko>Isompi otsikko</Otsikko>
 <Otsikko tyyli="pieni">Pienempi otsikko</Otsikko>
 ```
 
-## 4. App.tsx — tehtävien tila ja reittirakenne
+### Vaihe 5: App.tsx — tehtävien tila ja reittirakenne
 
-`App`-komponentti toimii sovelluksen "aivoina". Se hallinnoi tehtävälistaa tilamuuttujana ja välittää sekä listan tiedot että niiden päivitysfunktion alinäkymille propsien kautta.
+`App`-komponentti hallinnoi tehtävälistaa tilamuuttujana ja välittää sekä listan tiedot että niiden päivitysfunktion alinäkymille propsien kautta.
 
-### 4.1 Luodaan tehtävien tilamuuttuja ja sovelluksen kehys
-
-Korvataan Viten oletussisältö App.tsx:ssä. Luodaan ensin tehtävien tilamuuttuja ja sovelluksen perusrakenne:
-
-```tsx
-import { Container, CssBaseline } from '@mui/material';
-import { useState } from 'react';
-import { Route, Routes } from 'react-router';
-import Otsikko from './components/Otsikko';
-import { Tehtava } from './types';
-
-function App() {
-
-  const [tehtavat, setTehtavat] = useState<Tehtava[]>([
-    { nimi: 'Käy kaupassa', tehty: false },
-    { nimi: 'Siivoa', tehty: true },
-    { nimi: 'Ulkoiluta koiraa', tehty: false },
-  ]);
-
-  return (
-    <>
-      <CssBaseline />
-      <Container maxWidth="sm">
-
-        <Otsikko>Demo 6: Reititysparametrit</Otsikko>
-
-        <Routes>
-          {/* Reitit tulevat tähän */}
-        </Routes>
-
-      </Container>
-    </>
-  );
-}
-
-export default App;
-```
-
-Tilamuuttuja `tehtavat` on taulukko `Tehtava`-objekteja. Sen tyypiksi on merkitty `Tehtava[]` (taulukko Tehtava-objekteja). `useState` on alustettu kolmella esimerkkitehtävällä, jotta sovelluksessa on heti jotain nähtävää.
-
-Huomaa, miten `Tehtava`-tyyppi tuodaan äsken luodusta `./types`-tiedostosta. Sama tuonti toistuu kaikissa komponenteissa, jotka käyttävät tätä tyyppiä.
-
-`Container maxWidth="sm"` asettaa sovelluksen sisällölle maksimileveyden ja pitää sen automaattisesti sivun keskellä — kuten Demo 4:ssäkin.
-
-### 4.2 Lisätään reitit App.tsx:ään
-
-Lisätään `Routes`-lohkoon kolme reittiä ja tuodaan alinäkymäkomponentit:
+Korvataan `src/App.tsx`:n sisältö:
 
 ```tsx
 import { Container, CssBaseline } from '@mui/material';
@@ -161,7 +287,11 @@ import Otsikko from './components/Otsikko';
 import PoistaTehtava from './components/PoistaTehtava';
 import Tehtavalista from './components/Tehtavalista';
 import UusiTehtava from './components/UusiTehtava';
-import { Tehtava } from './types';
+
+interface Tehtava {
+  nimi: string;
+  tehty: boolean;
+}
 
 function App() {
 
@@ -201,91 +331,21 @@ function App() {
 export default App;
 ```
 
-Kaksi ensimmäistä reittiä ovat tuttuja Demo 5:stä: `/uusi` vie uuden tehtävän lisäysnäkymään ja `/` on aloitusnäkymä tehtävälistoineen.
+> **Huomio:** `PoistaTehtava`-, `Tehtavalista`- ja `UusiTehtava`-komponentit luodaan seuraavissa vaiheissa. Sovellus ei käänny ennen kuin kaikki kolme komponenttia on luotu.
 
-Kolmas reitti `/poista/:indeksi` on uusi. Siinä `:indeksi` on **reititysparametri**. Kaksoispisteellä alkava osa reitissä tarkoittaa, että se on muuttuva osa — sen arvo voi olla mitä tahansa. Esimerkiksi:
-- `/poista/0` → indeksi on `"0"`
-- `/poista/2` → indeksi on `"2"`
+`Tehtava`-interface määritellään suoraan `App.tsx`-tiedostossa. Sama interface toistetaan jokaisessa komponentissa, joka käyttää tehtävätietoja.
 
-Kaikki nämä polut johtavat samaan `PoistaTehtava`-komponenttiin, ja komponentti saa tiedon siitä, mikä numero reitissä on.
+Tilamuuttuja `tehtavat` on taulukko `Tehtava`-objekteja. `useState` on alustettu kolmella esimerkkitehtävällä, jotta sovelluksessa on heti jotain nähtävää.
+
+`CssBaseline` nollaa selaimen oletustyylit, kuten demo 5:ssä. `Container maxWidth="sm"` asettaa sovelluksen sisällölle maksimileveyden ja pitää sen sivun keskellä.
+
+Reitti `/poista/:indeksi` on **dynaaminen reitti**. Kaksoispisteellä alkava `:indeksi` on reititysparametri, jonka arvo vaihtelee. Esimerkiksi `/poista/0` ja `/poista/2` johtavat molemmat samaan `PoistaTehtava`-komponenttiin, mutta parametrin arvo on eri.
 
 Jokainen reitti välittää alinäkymälle `tehtavat`-taulukon ja `setTehtavat`-funktion propseina. Näin alinäkymät pääsevät käsiksi yhteiseen tehtävälistaan ja voivat päivittää sitä.
 
-## 5. Tehtavalista-komponentti
+### Vaihe 6: Tehtavalista-komponentti
 
 Luodaan `src/components/Tehtavalista.tsx`. Tämä on sovelluksen aloitusnäkymä: se listaa kaikki tehtävät, tarjoaa painikkeen uuden tehtävän lisäämiseen ja poistopainikkeen jokaisen tehtävän yhteydessä.
-
-### 5.1 Luodaan listan perusrakenne
-
-Aloitetaan rakentamalla listan perusrakenne — tehtävärivit checkbox-ikoneineen. Poistopainike lisätään seuraavassa kohdassa:
-
-```tsx
-import {
-  Button,
-  IconButton,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-} from '@mui/material';
-import CheckBoxIcon from '@mui/icons-material/CheckBox';
-import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
-import { Tehtava } from '../types';
-import Otsikko from './Otsikko';
-
-interface Props {
-  tehtavat: Tehtava[];
-  setTehtavat: (tehtavat: Tehtava[]) => void;
-}
-
-function Tehtavalista({ tehtavat, setTehtavat }: Props) {
-
-  const merkitseTehdyksi = (indeksi: number) => {
-    setTehtavat(
-      tehtavat.map((tehtava, i) =>
-        i === indeksi ? { ...tehtava, tehty: !tehtava.tehty } : tehtava
-      )
-    );
-  };
-
-  return (
-    <>
-      <Otsikko tyyli="pieni">Tehtävälista</Otsikko>
-
-      <List>
-        {tehtavat.map((tehtava, idx) => (
-          <ListItem key={idx}>
-
-            <ListItemIcon>
-              <IconButton onClick={() => merkitseTehdyksi(idx)}>
-                {tehtava.tehty
-                  ? <CheckBoxIcon color="secondary" />
-                  : <CheckBoxOutlineBlankIcon />
-                }
-              </IconButton>
-            </ListItemIcon>
-
-            <ListItemText primary={tehtava.nimi} />
-
-          </ListItem>
-        ))}
-      </List>
-    </>
-  );
-}
-
-export default Tehtavalista;
-```
-
-Komponentille välitetään propseina `tehtavat`-taulukko ja `setTehtavat`-funktio. Props-tyyppi `Props` määritellään omassa interfacessa käyttäen yhteistä `Tehtava`-tyyppiä.
-
-`merkitseTehdyksi`-funktio päivittää tehtävän `tehty`-tilan. Tärkeää on huomata, miten päivitys tehdään: `tehtavat.map(...)` luo täysin **uuden taulukon** eikä muuta olemassa olevaa. Jokaiselle alkiolle tarkistetaan indeksi — vastaavalle kohdalle luodaan uusi objekti spread-operaattorilla (`{ ...tehtava, tehty: !tehtava.tehty }`), muut alkiot palautetaan sellaisenaan. Tämä on Reactin **immutable-päivitys**: alkuperäistä tilaobjektia ei koskaan muuteta suoraan.
-
-Tehtävät listataan `tehtavat.map(...)`:lla, aivan kuten aiemmissakin demoissa. Jokainen tehtävä saa oman `ListItem`-rivin, johon tulee vasemmalle checkbox-ikoni ja oikealle tehtävän nimi.
-
-### 5.2 Lisätään navigointipainikkeet
-
-Lisätään "Lisää uusi tehtävä" -painike ja poistopainike jokaisen tehtävärivin oikeaan laitaan:
 
 ```tsx
 import {
@@ -300,8 +360,12 @@ import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Link } from 'react-router';
-import { Tehtava } from '../types';
 import Otsikko from './Otsikko';
+
+interface Tehtava {
+  nimi: string;
+  tehty: boolean;
+}
 
 interface Props {
   tehtavat: Tehtava[];
@@ -357,11 +421,19 @@ function Tehtavalista({ tehtavat, setTehtavat }: Props) {
 export default Tehtavalista;
 ```
 
-Poistopainike on `IconButton`, johon on asetettu `component={Link} to={`/poista/${idx}`}`. Tässä syntyy reititysparametrin syöttö: jokaisen tehtävän kohdalla `idx` (tehtävän indeksi taulukossa) upotetaan osaksi reittiä. Kun painiketta painetaan, selain siirtyy esimerkiksi osoitteeseen `/poista/1` — ja `PoistaTehtava`-komponentti saa tiedon, että poistetaan tehtävä indeksillä `1`.
+`Tehtava`-interface ja `Props`-interface määritellään tiedoston alussa. `Props` sisältää `tehtavat`-taulukon ja `setTehtavat`-funktion, jotka `App`-komponentti välittää propseina.
 
-Huomaa template literal -syntaksi: `` `/poista/${idx}` `` (backtick-merkit ja `${}`). Tällä tavalla JavaScript-muuttujan arvo upotetaan merkkijonon sisään.
+**`merkitseTehdyksi`-funktio** päivittää tehtävän `tehty`-tilan. `tehtavat.map(...)` luo uuden taulukon, jossa vastaavan indeksin kohdalle luodaan uusi objekti spread-operaattorilla `{ ...tehtava, tehty: !tehtava.tehty }` ja muut alkiot palautetaan sellaisenaan. Tämä on immutable-päivitys: alkuperäistä taulukkoa ei muuteta.
 
-## 6. UusiTehtava-komponentti
+**Tehtävälista** renderöidään `tehtavat.map(...)`:lla. Jokainen tehtävä saa oman `ListItem`-rivin. Vasemmalla on checkbox-ikoni, jota painamalla tehtävä merkitään tehdyksi. Oikealla on `DeleteIcon`-poistopainike.
+
+**Poistopainikkeen** `to`-ominaisuudessa käytetään template literal -syntaksia: `` `/poista/${idx}` `` upottaa tehtävän indeksin osaksi reittiä. Kun painiketta painetaan, selain siirtyy esimerkiksi osoitteeseen `/poista/1`, ja `PoistaTehtava`-komponentti saa tiedon, että poistetaan tehtävä indeksillä `1`.
+
+**"Lisää uusi tehtävä" -painike** käyttää samaa `component={Link} to="/uusi"` -rakennetta kuin demo 5:ssä.
+
+**Ehdollinen renderöinti** checkbox-ikonissa: `tehtava.tehty` on `true` → näytetään täytetty `CheckBoxIcon`, muuten tyhjä `CheckBoxOutlineBlankIcon`.
+
+### Vaihe 7: UusiTehtava-komponentti
 
 Luodaan `src/components/UusiTehtava.tsx`. Tämä on lisäysnäkymä, jossa käyttäjä voi kirjoittaa uuden tehtävän ja tallentaa sen.
 
@@ -369,8 +441,12 @@ Luodaan `src/components/UusiTehtava.tsx`. Tämä on lisäysnäkymä, jossa käyt
 import { Button, TextField } from '@mui/material';
 import { useRef } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Tehtava } from '../types';
 import Otsikko from './Otsikko';
+
+interface Tehtava {
+  nimi: string;
+  tehty: boolean;
+}
 
 interface Props {
   tehtavat: Tehtava[];
@@ -404,7 +480,11 @@ function UusiTehtava({ tehtavat, setTehtavat }: Props) {
         sx={{ marginBottom: '10px' }}
       />
 
-      <Button variant="contained" fullWidth onClick={lisaaTehtava}>
+      <Button
+        variant="contained"
+        fullWidth
+        onClick={lisaaTehtava}
+      >
         Tallenna
       </Button>
 
@@ -418,23 +498,27 @@ function UusiTehtava({ tehtavat, setTehtavat }: Props) {
 export default UusiTehtava;
 ```
 
-Tässä käytetään `useRef`-hookia syöttökentän arvon lukemiseen. `useRef` luo viittauksen DOM-elementtiin. Kun `inputRef`-ominaisuudella liitetään ref MUI:n `TextField`-komponenttiin, `uusiTehtavaRef.current` viittaa aina siihen HTML-input-elementtiin ja sieltä voidaan lukea arvo suoraan `.value`-ominaisuudella.
+Komponentissa käytetään `useRef`-hookia syöttökentän arvon lukemiseen. `useRef` luo viittauksen DOM-elementtiin. Kun `inputRef`-ominaisuudella liitetään ref MUI:n `TextField`-komponenttiin, `uusiTehtavaRef.current` viittaa siihen HTML-input-elementtiin ja sieltä voidaan lukea arvo `.value`-ominaisuudella.
 
-Tämä on niin sanottu **ohjaamaton komponentti** (uncontrolled component) -lähestymistapa: syöttökentän arvo ei tallennu Reactin tilamuuttujaan jokaisen näppäinpainalluksen yhteydessä, vaan luetaan vasta tallennuksen hetkellä. Toisin kuin `useState`-pohjaisessa ratkaisussa, tässä ei tapahdu uudelleenrenderöintiä kirjoittaessa.
+Tämä on **ohjaamaton komponentti** (uncontrolled component): syöttökentän arvo ei tallennu Reactin tilamuuttujaan jokaisen näppäinpainalluksen yhteydessä, vaan luetaan vasta tallennuksen hetkellä. Toisin kuin `useState`-pohjaisessa ratkaisussa, tässä ei tapahdu uudelleenrenderöintiä kirjoittaessa.
 
-`uusiTehtavaRef.current?.value` — kysymysmerkki `?.` on **optional chaining** -operaattori. Se tarkoittaa: "lue `value` jos `current` ei ole `null`". Tämä on tarpeen, koska TypeScript tietää, että ref on `null` ennen kuin komponentti on renderöity.
+`uusiTehtavaRef.current?.value` käyttää **optional chaining** -operaattoria `?.`. Se tarkoittaa: "lue `value`, jos `current` ei ole `null`". Tämä on tarpeen, koska TypeScript tietää, että ref on `null` ennen kuin komponentti on renderöity.
 
-`lisaaTehtava`-funktio luo uuden `Tehtava`-objektin, lisää sen tehtävälistaan spread-operaattorilla ja navigoi takaisin aloitusnäkymään `navigate('/')`-komennolla.
+`lisaaTehtava`-funktio luo uuden `Tehtava`-objektin, lisää sen tehtävälistaan spread-operaattorilla (`[...tehtavat, uusiTehtava]`) ja navigoi takaisin aloitusnäkymään `navigate('/')`-kutsulla. Spread-operaattori luo uuden taulukon, johon kopioidaan kaikki vanhat tehtävät ja lisätään uusi perään.
 
-## 7. PoistaTehtava-komponentti ja useParams-hook
+### Vaihe 8: PoistaTehtava-komponentti ja useParams-hook
 
 Luodaan `src/components/PoistaTehtava.tsx`. Tämä on demon ydinkomponentti, jossa opitaan reititysparametrien vastaanottaminen `useParams`-hookilla.
 
 ```tsx
 import { Button, Typography } from '@mui/material';
 import { Link, useNavigate, useParams } from 'react-router';
-import { Tehtava } from '../types';
 import Otsikko from './Otsikko';
+
+interface Tehtava {
+  nimi: string;
+  tehty: boolean;
+}
 
 interface Props {
   tehtavat: Tehtava[];
@@ -460,7 +544,11 @@ function PoistaTehtava({ tehtavat, setTehtavat }: Props) {
         Haluatko varmasti poistaa tehtävän "{tehtavat[indeksiNum]?.nimi}"?
       </Typography>
 
-      <Button variant="contained" fullWidth onClick={vahvistaPoisto}>
+      <Button
+        variant="contained"
+        fullWidth
+        onClick={vahvistaPoisto}
+      >
         Poista tehtävä
       </Button>
 
@@ -474,56 +562,108 @@ function PoistaTehtava({ tehtavat, setTehtavat }: Props) {
 export default PoistaTehtava;
 ```
 
-### useParams — reititysparametrien vastaanottaminen
+**`useParams`** palauttaa objektin, josta destructuroidaan `indeksi`-parametri. Parametrin nimi vastaa `App.tsx`:ssä reitille määriteltyä `:indeksi`-osaa (`/poista/:indeksi`).
 
-`useParams` on React Routerin hook, joka palauttaa objektin sisältäen kaikki aktiivisen reitin parametrit avain-arvo-pareina:
+Koska `useParams` palauttaa parametriarvot aina merkkijonoina, indeksi muunnetaan numeroksi omaan muuttujaansa: `const indeksiNum = Number(indeksi)`.
 
-```tsx
-const { indeksi } = useParams();
+**`vahvistaPoisto`-funktio** päivittää tehtävälistan `filter`-metodilla. `filter` käy läpi taulukon ja palauttaa uuden taulukon, joka sisältää vain ne alkiot, joille ehto on tosi. Ehto `idx !== indeksiNum` säilyttää kaikki tehtävät, joiden indeksi **ei** ole poistettavan tehtävän indeksi. Poiston jälkeen `navigate('/')` ohjaa takaisin aloitusnäkymään.
+
+**Vahvistusviestissä** näytetään poistettavan tehtävän nimi: `tehtavat[indeksiNum]?.nimi`. Optional chaining `?.` varmistaa, ettei sovellus kaadu, jos indeksi olisi jostakin syystä virheellinen.
+
+Tallennetaan tiedosto. Sovelluksen kaikkien kolmen näkymän pitäisi nyt toimia: tehtäviä voi merkitä tehdyiksi, lisätä uusia ja poistaa olemassa olevia.
+
+### Projektin lopullinen rakenne
+
+```
+demo06/
+├── node_modules/                    # Asennetut riippuvuudet (ei versionhallintaan)
+├── public/                          # Staattiset tiedostot
+├── src/
+│   ├── components/
+│   │   ├── Otsikko.tsx              # Uudelleenkäytettävä otsikkokomponentti
+│   │   ├── PoistaTehtava.tsx        # Poistonäkymä (useParams, filter)
+│   │   ├── Tehtavalista.tsx         # Aloitusnäkymä (lista, checkbox, poistopainike)
+│   │   └── UusiTehtava.tsx          # Lisäysnäkymä (useRef, useNavigate)
+│   ├── App.tsx                      # Reittien määrittely ja tehtävien tilamuuttuja
+│   ├── main.tsx                     # Sovelluksen aloituspiste (BrowserRouter)
+│   └── vite-env.d.ts                # Viten TypeScript-ympäristötyypit
+├── eslint.config.js                 # ESLint-konfiguraatio
+├── index.html                       # HTML-pohja
+├── package.json                     # Riippuvuudet ja käynnistyskomennot
+├── tsconfig.json                    # TypeScript-konfiguraatio
+├── tsconfig.app.json                # TypeScript-konfiguraatio sovelluskoodille
+├── tsconfig.node.json               # TypeScript-konfiguraatio Vite-konfiguraatiolle
+└── vite.config.ts                   # Vite-konfiguraatio (portti 3006)
 ```
 
-Tässä haetaan `indeksi`-parametri, jonka nimi vastaa App-komponentissa reitille määriteltyä `:indeksi`-osaa (`/poista/:indeksi`). Destructuring-syntaksilla `{ indeksi }` poimitaan juuri tämä parametri suoraan ilman, että ensin täytyy viitata koko objektiin.
+---
 
-**Tärkeä huomio:** `useParams` palauttaa kaikki parametriarvot aina **merkkijonoina** (`string`), vaikka niiden sisältö olisi numero. Tästä syystä indeksiä käytettäessä täytyy tehdä tyyppimuunnos. Muunnos tehdään heti omaan muuttujaansa:
+## 3. Muistilista
 
-```tsx
-const indeksiNum = Number(indeksi);
+### React Router — reititysparametrit
+
+| Käsite | Syntaksi | Kuvaus |
+|--------|----------|--------|
+| Dynaaminen reitti | `path="/poista/:indeksi"` | Kaksoispisteellä alkava osa on muuttuva parametri |
+| `useParams()` | `const { indeksi } = useParams()` | Palauttaa reitin parametrit objektina |
+| Parametrin tyyppi | Aina `string` | Numeerinen käyttö vaatii `Number()`-muunnoksen |
+| `useNavigate()` | `navigate('/')` | Ohjelmallinen navigointi funktion sisällä |
+| `Link` | `component={Link} to="/reitti"` | MUI-komponentin polymorfinen navigointi |
+
+### Immutable-taulukkojen päivitys
+
+| Operaatio | Metodi | Esimerkki |
+|-----------|--------|-----------|
+| Lisäys | Spread-operaattori | `setTehtavat([...tehtavat, uusiTehtava])` |
+| Muokkaus | `map` | `setTehtavat(tehtavat.map((t, i) => i === idx ? { ...t, tehty: !t.tehty } : t))` |
+| Poisto | `filter` | `setTehtavat(tehtavat.filter((_, i) => i !== idx))` |
+
+> **Huomio:** Reactissa tilaobjekteja ja -taulukoita ei koskaan muuteta suoraan. `push`, `splice` ja suora `taulukko[i] = ...` -sijoitus eivät käynnistä uudelleenrenderöintiä, koska React ei havaitse muutosta. `map`, `filter` ja spread-operaattori luovat aina uuden taulukon, jonka React tunnistaa muutokseksi.
+
+### MUI-komponentit tässä demossa
+
+| Komponentti | Dokumentaatio | Käyttötarkoitus |
+|-------------|---------------|-----------------|
+| `<Container>` | [Container](https://mui.com/material-ui/react-container/) | Keskittävä säilökomponentti, `maxWidth="sm"` |
+| `<Typography>` | [Typography](https://mui.com/material-ui/react-typography/) | Tekstikomponentti |
+| `<Button>` | [Button](https://mui.com/material-ui/react-button/) | Painike, `variant="contained"` täytetyllä tyylillä |
+| `<TextField>` | [TextField](https://mui.com/material-ui/react-text-field/) | Tekstinsyöttökenttä |
+| `<List>` | [List](https://mui.com/material-ui/react-list/) | Listasäilö |
+| `<ListItem>` | [List](https://mui.com/material-ui/react-list/) | Yksittäinen listarivi |
+| `<ListItemIcon>` | [List](https://mui.com/material-ui/react-list/) | Ikoni listarivin vasemmalla tai oikealla puolella |
+| `<ListItemText>` | [List](https://mui.com/material-ui/react-list/) | Teksti listarivissä |
+| `<IconButton>` | [IconButton](https://mui.com/material-ui/api/icon-button/) | Ikonipainike |
+| `<CssBaseline>` | [CssBaseline](https://mui.com/material-ui/react-css-baseline/) | Selaimen oletustyylien nollaus |
+
+### Asennuskomennot
+
+| Komento | Selitys |
+|---------|---------|
+| `npm create vite@latest demo06 -- --template react-ts` | Luo uuden Vite + React + TypeScript -projektin |
+| `npm install react-router` | Asentaa React Router -kirjaston |
+| `npm install @mui/material @emotion/react @emotion/styled` | Asentaa MUI:n ja Emotion-kirjastot |
+| `npm install @mui/icons-material` | Asentaa MUI:n ikonipakkauksen |
+| `npm install @fontsource/roboto` | Asentaa Roboto-fontin |
+| `npm run dev` | Käynnistää Vite-kehityspalvelimen |
+
+---
+
+## Sovelluksen käynnistys
+
+Jos projekti kloonataan valmiina tai halutaan käynnistää se uudelleen:
+
+**1. Asennetaan riippuvuudet:**
+
+```bash
+npm install
 ```
 
-Tämän jälkeen `indeksiNum` on numerotyyppiä ja sitä voidaan käyttää taulukko-operaatioissa.
+`npm install` asentaa `package.json`-tiedostossa listatut riippuvuudet `node_modules/`-kansioon. Tämä on tarpeen aina, kun projekti kloonataan tai `node_modules/`-kansio puuttuu, koska sitä ei lisätä versionhallintaan.
 
-### Tehtävän poistaminen filter-metodilla
+**2. Käynnistetään kehityspalvelin:**
 
-`vahvistaPoisto`-funktiossa tehtävälista päivitetään `filter`-metodilla:
-
-```tsx
-setTehtavat(tehtavat.filter((_, idx) => idx !== indeksiNum));
+```bash
+npm run dev
 ```
 
-`filter` käy läpi taulukon ja palauttaa uuden taulukon, joka sisältää vain ne alkiot, joille ehto on tosi. Tässä ehto on `idx !== indeksiNum` — kaikki tehtävät, joiden indeksi **ei** ole poistettavan tehtävän indeksi, säilytetään. Alleviivattu `_` tarkoittaa, että funktion ensimmäistä parametria (itse alkiota) ei käytetä tässä — se on TypeScript/JavaScript-käytäntö merkitä käyttämätön parametri.
-
-Tämäkin on immutable-päivitys: alkuperäistä `tehtavat`-taulukkoa ei muuteta, vaan `filter` luo uuden taulukon.
-
-### Poistettavan tehtävän tiedot näytetään käyttäjälle
-
-Vahvistusviestissä näytetään poistettavan tehtävän nimi:
-
-```tsx
-<Typography sx={{ marginBottom: '20px' }}>
-  Haluatko varmasti poistaa tehtävän "{tehtavat[indeksiNum]?.nimi}"?
-</Typography>
-```
-
-`tehtavat[indeksiNum]` hakee tehtävän taulukosta indeksillä. Optional chaining `?.nimi` varmistaa, ettei sovellus kaadu, jos indeksi olisi jostakin syystä virheellinen — esimerkiksi jos käyttäjä kirjoittaa osoitteen suoraan selaimen osoiteriville.
-
-## 8. Lopuksi
-
-Tässä demossa opittiin reititysparametrien käyttö React Routerissa. Keskeisimmät uudet asiat:
-
-- **`:parametrinnimi` reitissä** — kaksoispisteellä alkava osa polkua on muuttuva reititysparametri, esim. `path="/poista/:indeksi"`.
-- **`useParams()`** — hook, joka palauttaa aktiivisen reitin parametrit objektina. Parametriarvot ovat aina merkkijonoja.
-- **Tyyppimuunnos** — numeerista parametria käytettäessä muunnos `Number(parametri)` on tarpeen.
-- **Yhteinen tyypitiedosto** (`types.ts`) — jaettu `interface` määritellään kerran ja tuodaan kaikista komponenteista.
-- **Immutable-päivitys** — tilan taulukkoja ei koskaan muuteta suoraan; `map` ja `filter` luovat aina uuden taulukon.
-
-Reititysparametrit mahdollistavat dynaamisten näkymien rakentamisen: sama komponentti voi näyttää eri sisältöä sen perusteella, mikä arvo reitissä on. Tätä mallia käytetään laajasti oikeissa sovelluksissa — esimerkiksi tuotesivuilla (`/tuote/123`), käyttäjäprofiileissa (`/kayttaja/juha`) ja vastaavissa.
+Sovellus avautuu osoitteessa `http://localhost:3006`.
